@@ -4,7 +4,7 @@
 - ID Dicoding: 490585
 
 ## Deployed Link
-[Bike Sharing Dataset](https://www.kaggle.com/datasets/lakshmi25npathi/bike-sharing-dataset/data).
+[Bike Sharing Dashboard](https://www.kaggle.com/datasets/lakshmi25npathi/bike-sharing-dataset/data).
 
 ## Contents
 - [Project Overview](#project-overview)
