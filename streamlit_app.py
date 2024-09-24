@@ -2,150 +2,197 @@ import streamlit as st
 import pandas as pd
 import math
 from pathlib import Path
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # Set the title and favicon that appear in the Browser's tab bar.
 st.set_page_config(
-    page_title='GDP dashboard',
-    page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
+    page_title='Bike Sharing: dashboard ',
+    page_icon=':bike:', # This is an emoji shortcode. Could be a URL too.r
 )
 
 # -----------------------------------------------------------------------------
 # Declare some useful functions.
 
-@st.cache_data
-def get_gdp_data():
-    """Grab GDP data from a CSV file.
+#@st.cache_data
+def load_data():
+    df = pd.read_csv('/workspaces/gdp-dashboard/data/hour.csv')
+    df['dteday'] = pd.to_datetime(df['dteday'])
+    return df
 
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
+df = load_data()
 
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
+# Fungsi untuk memetakan musim
+def map_season(season):
+    return {
+        'Musim Semi': 1,
+        'Musim Panas': 2,
+        'Musim Gugur': 3,
+        'Musim Dingin': 4
+    }[season]
 
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
 
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
-    )
 
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
+# Title of the dashboard
 
-    return gdp_df
-
-gdp_df = get_gdp_data()
-
-# -----------------------------------------------------------------------------
-# Draw the actual page
-
-# Set the title that appears at the top of the page.
 '''
-# :earth_americas: GDP dashboard
+# :bike: Dashboard Analisis Penyewewaan Sepeda
 
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
+Sistem penyewaan sepeda adalah evolusi otomatis dari penyewaan sepeda 
+tradisional, memungkinkan pengguna untuk dengan mudah menyewa dan 
+mengembalikan sepeda di berbagai lokasi. Saat ini, terdapat lebih dari 
+500 program di seluruh dunia dengan lebih dari 500.000 sepeda. .
 '''
 
-# Add some spacing
-''
-''
+# Sidebar untuk filter
+#st.sidebar.title("Filter Data")
+#season = st.sidebar.selectbox("Pilih Musim", ['Musim Semi', 'Musim Panas', 'Musim Gugur', 'Musim Dingin'])
 
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
+# Mapping musim ke angka
+#filtered_season = map_season(season)
 
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
+# Create Tabs
+tab1, tab2 = st.tabs(["📊 Tren Penyewaan Sepeda", "📈 Pengaruh Cuaca terhadap penyewaan"])
 
-countries = gdp_df['Country Code'].unique()
+# Filter data berdasarkan musim yang dipilih dari sidebar
+#filtered_data = df[df['season'] == filtered_season]
 
-if not len(countries):
-    st.warning("Select at least one country")
+# Visualisasi Tren Penyewaan dengan Data 
+with tab1:
+    st.subheader('Tren Penyewaan Sepeda ')
+    
+    # Membuat figure dengan ukuran yang lebih besar
+    plt.figure(figsize=(12, 7))
+    
+    # Menggunakan seaborn untuk plot dengan palet warna yang lebih menarik
+    sns.set(style="whitegrid")  # Tema whitegrid agar tampilan lebih bersih
+    sns.lineplot(x='mnth', y='cnt', hue='yr', data=df, marker="o", 
+                 palette="coolwarm",  # Menggunakan palet warna yang lebih menarik
+                 linewidth=2.5)  # Membuat garis lebih tebal
 
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
+    # Menambahkan judul dan label sumbu yang lebih estetis
+    plt.title('Tren Penyewaan Sepeda Berdasarkan Bulan (Semua Musim)', 
+              fontsize=16, fontweight='bold', color='darkblue')
+    plt.xlabel('Bulan', fontsize=12, fontweight='bold')
+    plt.ylabel('Jumlah Penyewaan (cnt)', fontsize=12, fontweight='bold')
 
-''
-''
-''
+    # Menambahkan format khusus pada ticks untuk membuat sumbu X lebih rapi
+    plt.xticks(ticks=range(1, 13), labels=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                                           'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+               fontsize=10)
+    plt.yticks(fontsize=10)
 
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
-]
+    # Menyesuaikan legenda agar lebih jelas dan tidak bertumpuk
+    plt.legend(title='Tahun', title_fontsize='13', fontsize='11', loc='upper right', frameon=True)
 
-st.header('GDP over time', divider='gray')
+    # Menampilkan plot di Streamlit
+    st.pyplot(plt)
 
-''
+    st.subheader('Ringkasan Penyewaan Sepeda')
 
-st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
-)
+    # Buat kolom untuk metrik dan grafik batang
+    col1, col2 = st.columns(2)
 
-''
-''
+    with col1:
+        # Hitung total penyewaan untuk seluruh data (tanpa filter musim)
+        total_penyewaan = df['cnt'].sum()
+        st.metric(label="Total Penyewaan Sepeda", value=total_penyewaan)
+
+        # Total penyewaan oleh member terdaftar untuk seluruh data
+        total_registered = df['registered'].sum()
+        st.metric(label="Total Penyewaan oleh Member Terdaftar", value=total_registered)
+
+        # Total penyewaan oleh non-member (casual) untuk seluruh data
+        total_casual = df['casual'].sum()
+        st.metric(label="Total Penyewaan oleh Non-Member", value=total_casual)
+
+        # Rata-rata penyewaan untuk seluruh data
+        avg_penyewaan = df['cnt'].mean()
+        st.metric(label="Rata-rata Penyewaan Sepeda", value=round(avg_penyewaan, 2))
+
+    with col2:
+        # Visualisasi total penyewaan per musim dalam bentuk grafik batang
+        plt.figure(figsize=(6, 4))
+        sns.set(style="whitegrid")  # Tema untuk mempercantik tampilan
+        season_totals = df.groupby('season')['cnt'].sum().reset_index()
+        season_totals['season'] = season_totals['season'].replace({1: 'Musim Semi', 2: 'Musim Panas', 3: 'Musim Gugur', 4: 'Musim Dingin'})
+        sns.barplot(x='season', y='cnt', data=season_totals, palette='Blues_d')
+
+        # Menambahkan judul dan label pada grafik batang
+        plt.title('Total Penyewaan Sepeda per Musim', fontsize=14, fontweight='bold')
+        plt.xlabel('Musim', fontsize=12)
+        plt.ylabel('Total Penyewaan (cnt)', fontsize=12)
+
+        # Tampilkan grafik batang di Streamlit
+        st.pyplot(plt)
 
 
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
 
-st.header(f'GDP in {to_year}', divider='gray')
 
-''
+with tab2:
+    st.subheader("Pengaruh Cuaca terhadap Penyewaan")
 
-cols = st.columns(4)
+    st.write("**Hubungan Suhu dengan Penyewaan**")
+    
+    # Membuat figur baru untuk line chart
+    plt.figure(figsize=(20, 6))  # Atur ukuran plot lebih lebar
+    temp_bins = pd.cut(df['temp'], bins=10)
+    avg_by_temp = df.groupby(temp_bins)['cnt'].mean().reset_index()
+    sns.lineplot(x=avg_by_temp['temp'].astype(str), y='cnt', data=avg_by_temp)
+    
+    plt.title('Rata-rata Penyewaan Berdasarkan Suhu')
+    plt.xlabel('Suhu (interval)')
+    plt.ylabel('Rata-rata Penyewaan')
+    
+    st.pyplot(plt)  # Menampilkan plot
 
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
+    # Kolom untuk metrik dan bar chart yang sederhana
+    col1, col2 = st.columns(2)
 
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
+    with col1:
+        st.write("**Rata-rata Penyewaan Berdasarkan Kondisi Cuaca**")
+        avg_by_weather = df.groupby('weathersit')['cnt'].mean().reset_index()
+        avg_by_weather['weathersit'] = avg_by_weather['weathersit'].replace({
+            1: 'Clear', 2: 'Mist', 3: 'Light Snow/Rain', 4: 'Heavy Rain/Snow'})
+        
+        plt.figure(figsize=(8, 6))  # Atur ukuran plot lebih lebar
+        sns.barplot(x='weathersit', y='cnt', data=avg_by_weather, palette='Blues_d')
 
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
-        else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
+        plt.title('Rata-rata Penyewaan Berdasarkan Cuaca')
+        plt.xlabel('Kondisi Cuaca')
+        plt.ylabel('Rata-rata Penyewaan')
+        
+        # Rotasi label di X-axis agar tidak bertumpuk
+        plt.xticks(rotation=45)
+        
+        # Format ulang Y-axis agar tidak menggunakan notasi ilmiah
+        import matplotlib.ticker as ticker
+        plt.gca().yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f'{int(x):,}'))
+        
+        st.pyplot(plt)
+    with col2:
 
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
+    
+        total_clear = df[df['weathersit'] == 1]['cnt'].sum()
+        st.metric(label="Total Penyewaan Cuaca Cerah", value=total_clear)
+
+        total_mist = df[df['weathersit'] == 2]['cnt'].sum()
+        st.metric(label="Total Penyewaan Cuaca Berkabut", value=total_mist)
+
+        total_rain_snow = df[df['weathersit'] == 3]['cnt'].sum()
+        st.metric(label="Total Penyewaan Hujan/Salju", value=total_rain_snow)
+
+        total_rain_snow = df[df['weathersit'] == 4]['cnt'].sum()
+        st.metric(label="Total Penyewaan Cuaca Ekstream", value=total_rain_snow)
+
+
+
+
+    # Tambahkan interpretasi
+    st.write("""
+    **Kesimpulan:**
+    - Suhu sedang cenderung meningkatkan jumlah penyewaan.
+    - Cuaca cerah menghasilkan penyewaan tertinggi.
+    """)
+    
+    
